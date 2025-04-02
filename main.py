@@ -4,9 +4,9 @@ import telebot
 from datetime import datetime
 
 # Настройки бота
-TOKEN = "7230163062:AAEPIIfr5skmmV_Cj8VayKhIUHAcpp7Ct5s"  # Замените на свой токен
+TOKEN = "7230163062:AAEPIIfr5skmmV_Cj8VayKhIUHAcpp7Ct5s"  # Токен вашего бота
+ADMIN_CHAT_ID = "5962742623"  # Ваш ID в Telegram (можно узнать у @userinfobot)
 bot = telebot.TeleBot(TOKEN)
-
 
 # Подключение к базе данных
 def init_db():
@@ -24,26 +24,22 @@ def init_db():
     )
     ''')
 
-    # Индексы для быстрого поиска
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_number ON users(random_number)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_user ON users(user_id)')
 
     conn.commit()
     return conn
 
-
 db_conn = init_db()
-
 
 def generate_unique_number():
     """Генерирует уникальное число, которого нет в базе"""
     while True:
-        num = random.randint(1, 10000)  # Большой диапазон для уникальности
+        num = random.randint(1, 10000)
         cursor = db_conn.cursor()
         cursor.execute('SELECT 1 FROM users WHERE random_number = ?', (num,))
         if not cursor.fetchone():
             return num
-
 
 def get_user_number(user_id):
     """Получает информацию о числе пользователя"""
@@ -54,16 +50,25 @@ def get_user_number(user_id):
     )
     return cursor.fetchone()
 
+def notify_admin(user_info, number):
+    """Отправляет уведомление администратору"""
+    message = (
+        "🎉 Новый пользователь!\n\n"
+        f"👤 Имя: {user_info['first_name']}\n"
+        f"🔖 Никнейм: @{user_info['username']}\n"
+        f"🆔 ID: {user_info['user_id']}\n"
+        f"🔢 Выданный номер: {number}\n"
+        f"📅 Дата: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    bot.send_message(ADMIN_CHAT_ID, message)
 
-# Обработчик команды /start
 @bot.message_handler(commands=['start', 'число', 'number'])
 def handle_start(message):
     user_id = message.from_user.id
-    username = message.from_user.username
-    first_name = message.from_user.first_name
+    username = message.from_user.username or "нет_никнейма"
+    first_name = message.from_user.first_name or "Аноним"
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Проверяем, есть ли пользователь в базе
     existing_data = get_user_number(user_id)
 
     if existing_data:
@@ -86,6 +91,13 @@ def handle_start(message):
             )
             db_conn.commit()
 
+            # Отправляем уведомление администратору
+            notify_admin({
+                'user_id': user_id,
+                'username': username,
+                'first_name': first_name
+            }, number)
+
             response = (
                 f"( ͡° ͜つ ͡°) Дарова, {first_name}!\n\n"
                 f"Твой билетик: {number}\n\n"
@@ -97,15 +109,12 @@ def handle_start(message):
 
     bot.send_message(message.chat.id, response)
 
-
-# Обработчик всех остальных сообщений
 @bot.message_handler(func=lambda message: True)
 def handle_other_messages(message):
     help_text = (
         "Чего? Не понял. Чтобы получить билетик на розыгрыш, введи /start\n"
     )
     bot.send_message(message.chat.id, help_text)
-
 
 if __name__ == '__main__':
     print("Бот запущен и готов к работе!")
