@@ -4,7 +4,7 @@ import telebot
 from datetime import datetime
 
 # Настройки бота
-TOKEN = "7230163062:AAEPIIfr5skmmV_Cj8VayKhIUHAcpp7Ct5s"  # Токен вашего бота
+TOKEN = "7750170218:AAF4ZV2KH13KhQ1k7JfzlD9jXsbSsNdVnYk"  # Токен вашего бота
 ADMIN_CHAT_ID = "5962742623"  # Ваш ID в Telegram (можно узнать у @userinfobot)
 bot = telebot.TeleBot(TOKEN)
 
